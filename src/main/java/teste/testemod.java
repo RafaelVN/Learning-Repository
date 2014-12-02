@@ -50,12 +50,8 @@ public class testemod {
 		GameRegistry.registerTileEntity(InductionFurnaceTileEntity.class,
 				"InductionFurnace");
 
-		// GameRegistry.registerTileEntity(InductionFurnaceTileEntity.class,
-		// "InductionFurnace");
-
 		NetworkRegistry.INSTANCE.registerGuiHandler(testemod.instance,
 				new InductionFurnaceGuiHandler());
-		// TileEntity.addMapping(p_145826_0_, p_145826_1_);
 
 		// Deprecated for removal in 1.8
 		// LanguageRegistry.instance().addStringLocalization("container.inductionFurnace","Induction Furnace");
