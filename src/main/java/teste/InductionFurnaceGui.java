@@ -1,0 +1,58 @@
+package teste;
+
+import org.lwjgl.opengl.GL11;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.entity.player.InventoryPlayer;
+//import net.minecraft.client.gui.g;
+import net.minecraft.util.ResourceLocation;
+
+public class InductionFurnaceGui extends GuiContainer {
+
+	public static final ResourceLocation texture = new ResourceLocation(
+			testemod.MODID, "textures/gui/furnace.png");
+
+	public InductionFurnaceTileEntity tileEntity;
+
+	public InductionFurnaceGui(InventoryPlayer ivPlayer,
+			InductionFurnaceTileEntity tileEntity) {
+		super(new InductionFurnaceContainer(ivPlayer, tileEntity));
+		this.tileEntity = tileEntity;
+
+		this.xSize = 176;
+		this.ySize = 166;
+	}
+
+	@Override
+	protected void drawGuiContainerForegroundLayer(int par1, int par2) {
+		String name = tileEntity.isInvNameLocalized() ? tileEntity.getInvName()
+				: I18n.format(tileEntity.getInvName(), new Object[0]);
+
+		fontRendererObj.drawString(name,
+				xSize / 2 - this.fontRendererObj.getStringWidth(name) / 2, 6,
+				4210752);
+
+		fontRendererObj.drawString(
+				I18n.format(tileEntity.getInvName(), new Object[0]), 8,
+				this.ySize - 96 + 2, 4210752);
+	}
+
+	@Override
+	protected void drawGuiContainerBackgroundLayer(float f, int i, int h) {
+
+		GL11.glColor4f(1F, 1F, 1F, 1F);
+
+		Minecraft.getMinecraft().getTextureManager().bindTexture(texture);
+		drawTexturedModalRect(guiLeft, guiTop, 0, 0, xSize, ySize);
+
+		if (tileEntity.isBurning()) {
+			int k = this.tileEntity.getBurnTimeRemainingScaled(12);
+			drawTexturedModalRect(guiLeft + 56, guiTop + 36 + 12 - k, 176,
+					12 - k, 14, k + 2);
+		}
+		int k = tileEntity.getCookProgressScaled(24);
+		drawTexturedModalRect(guiLeft + 79, guiTop + 34, 176, 14, k + 1, 16);
+	}
+}
