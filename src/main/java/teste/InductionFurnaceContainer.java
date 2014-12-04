@@ -19,7 +19,7 @@ public class InductionFurnaceContainer extends Container {
 	public int lastItemBurnTime;
 
 	// how long time left before cooked
-	public int lastCookTime;
+	public int[] lastCookTime = new int[5];
 
 	public InductionFurnaceContainer(InventoryPlayer ivPlayer,
 			InductionFurnaceTileEntity tileEntity) {
@@ -29,64 +29,84 @@ public class InductionFurnaceContainer extends Container {
 		this.tileEntity = tileEntity;
 
 		// cria os slots em relação do numero do slot com a sua posição na gui
-		// 0 - furnace up
-		// 1 - furnace down
-		// 2 - furnace right
 
-		addSlotToContainer(new Slot(tileEntity, 0, 56, 17));
-		addSlotToContainer(new Slot(tileEntity, 1, 56, 53));
-		addSlotToContainer(new SlotFurnace(ivPlayer.player, tileEntity, 2, 116,
-				35));
+		// 0-4 - stocks
+		// 5-9 - place
+		// 11-4 - result
+		for (int i = 0; i < 5; i++) {
+			addSlotToContainer(new Slot(tileEntity,
+					InductionFurnaceTileEntity.INGREDIENT_STOCK[i], 42,
+					25 + (18 * i)));
+			addSlotToContainer(new InductionFurnaceLockedSlot(tileEntity,
+					InductionFurnaceTileEntity.INGREDIENT_PLACE[i], 120,
+					25 + (18 * i)));
+			addSlotToContainer(new SlotFurnace(ivPlayer.player, tileEntity,
+					InductionFurnaceTileEntity.RESULT[i], 198, 25 + (18 * i)));
+		}
 
-		// 3-29 Player inventory back
-		// 30-38 Player inventory hand
+		// 15 - fuel
+		addSlotToContainer(new Slot(tileEntity,
+				InductionFurnaceTileEntity.FUEL_PLACE, 120, 135));
+
+		// 16-43 Player inventory back
+		// 44-52 Player inventory hand
 		int i;
 		for (i = 0; i < 3; ++i) {
 			for (int j = 0; j < 9; ++j) {
-				this.addSlotToContainer(new Slot(ivPlayer, j + i * 9 + 9,
-						8 + j * 18, 84 + i * 18));
+				this.addSlotToContainer(new Slot(ivPlayer, j + (i * 9) + 9,
+						48 + (18 * j), 175 + (18 * i)));
 			}
 		}
-
 		for (i = 0; i < 9; ++i) {
-			this.addSlotToContainer(new Slot(ivPlayer, i, 8 + i * 18, 142));
+			this.addSlotToContainer(new Slot(ivPlayer, i, 48 + (18 * i), 233));
 		}
 	}
 
 	// registra valores na tileentity no server para ser enviado para os client
 	// que possui ativado tileentity especificado
+
+	// ids :
+	// 0-4 cookTime[]
+	// 5 burnTime;
+	// 6 currentItemBurnTime
 	@Override
 	public void addCraftingToCrafters(ICrafting iCraftting) {
 		super.addCraftingToCrafters(iCraftting);
-		iCraftting.sendProgressBarUpdate(this, 0, tileEntity.cookTime);
-		iCraftting.sendProgressBarUpdate(this, 1, tileEntity.burnTime);
-		iCraftting.sendProgressBarUpdate(this, 2,
+		for (int i = 0; i < 5; i++) {
+			iCraftting.sendProgressBarUpdate(this, i, tileEntity.cookTime[i]);
+		}
+		iCraftting.sendProgressBarUpdate(this, 5, tileEntity.burnTime);
+		iCraftting.sendProgressBarUpdate(this, 6,
 				tileEntity.currentItemBurnTime);
-		// System.out.println("");
 	}
 
 	@Override
+	// quanda a gui ativada, constantemente detecta mudança e caso haja alguma,
+	// chama update no client
 	public void detectAndSendChanges() {
-		// System.out.println("detectAndSendChanges()");
+
 		super.detectAndSendChanges();
 
-		for (int i = 0; i < crafters.size(); i++) {
-			//System.out.println(i + "," + crafters.size());
-			ICrafting iCraftting = (ICrafting) crafters.get(i);
+		// eu acho que se refere a cada player que tem ativo o bloco
+		for (int ic = 0; ic < crafters.size(); ic++) {
+			ICrafting iCraftting = (ICrafting) crafters.get(ic);
 
-			if (lastCookTime != tileEntity.cookTime) {
-				iCraftting.sendProgressBarUpdate(this, 0, tileEntity.cookTime);
+			for (int i = 0; i < 5; i++) {
+				if (lastCookTime[i] != tileEntity.cookTime[i]) {
+					iCraftting.sendProgressBarUpdate(this, i,
+							tileEntity.cookTime[i]);
+				}
 			}
 			if (lastBurnTime != tileEntity.burnTime) {
-				iCraftting.sendProgressBarUpdate(this, 1, tileEntity.burnTime);
+				iCraftting.sendProgressBarUpdate(this, 5, tileEntity.burnTime);
 			}
 			if (lastItemBurnTime != tileEntity.currentItemBurnTime) {
-				iCraftting.sendProgressBarUpdate(this, 2,
+				iCraftting.sendProgressBarUpdate(this, 6,
 						tileEntity.currentItemBurnTime);
 			}
 		}
 
-		lastCookTime = tileEntity.cookTime;
+		lastCookTime = tileEntity.cookTime.clone();
 		lastBurnTime = tileEntity.burnTime;
 		lastItemBurnTime = tileEntity.currentItemBurnTime;
 	}
@@ -94,13 +114,13 @@ public class InductionFurnaceContainer extends Container {
 	// no client e recebidos os valores atualizados do tileentity do server
 	@Override
 	public void updateProgressBar(int varId, int newValue) {
-		if (varId == 0)
-			tileEntity.cookTime = newValue;
-		if (varId == 1)
+		if (varId >= 0 && varId <= 4) {
+			tileEntity.cookTime[varId] = newValue;
+		}
+		if (varId == 5)
 			tileEntity.burnTime = newValue;
-		if (varId == 2)
+		if (varId == 6)
 			tileEntity.currentItemBurnTime = newValue;
-		// System.out.println("");
 	}
 
 	@Override

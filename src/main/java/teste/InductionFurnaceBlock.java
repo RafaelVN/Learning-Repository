@@ -17,13 +17,16 @@ import net.minecraft.inventory.Container;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 
-public class InductionFurnaceBlock extends BlockContainer /*implements
-		ITileEntityProvider*/ {
+public class InductionFurnaceBlock extends BlockContainer /*
+														 * implements
+														 * ITileEntityProvider
+														 */{
 
 	public final static int BOTTOM_SIDE = 0;
 	public final static int TOP_SIDE = 1;
@@ -50,6 +53,7 @@ public class InductionFurnaceBlock extends BlockContainer /*implements
 		if (!world.isRemote) {
 			FMLNetworkHandler.openGui(player, testemod.instance,
 					testemod.guiIdInductionFurnace, world, x, y, z);
+			world.notifyBlockChange(x, y, z, this);
 		}
 		return true;
 	}
@@ -66,7 +70,8 @@ public class InductionFurnaceBlock extends BlockContainer /*implements
 	@Override
 	public void registerBlockIcons(IIconRegister iconRegister) {
 		top = iconRegister.registerIcon("testemod:MachinePlateBorded");
-		bottom = iconRegister.registerIcon("testemod:MachineLogisticEntrance");
+		bottom = iconRegister
+				.registerIcon("testemod:MachineLogisticEntranceSouthFront");
 		left = iconRegister.registerIcon("testemod:MachinePlateFanLeft");
 		right = iconRegister.registerIcon("testemod:MachinePlateFanRight");
 		back = iconRegister.registerIcon("testemod:MachineBack");
@@ -235,8 +240,10 @@ public class InductionFurnaceBlock extends BlockContainer /*implements
 
 		// se ativo
 		if (isBurning) {
+			//System.out.println(isBurning);
 			world.setBlock(x, y, z, testemod.inductionFurnaceAtive);
 		} else {
+			//System.out.println(isBurning);
 			world.setBlock(x, y, z, testemod.inductionFurnace);
 		}
 

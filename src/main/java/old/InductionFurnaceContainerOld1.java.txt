@@ -1,0 +1,124 @@
+package old;
+
+import teste.InductionFurnaceTileEntity;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.inventory.Container;
+import net.minecraft.inventory.ICrafting;
+import net.minecraft.inventory.Slot;
+import net.minecraft.inventory.SlotFurnace;
+import net.minecraft.item.ItemStack;
+
+public class InductionFurnaceContainerOld1 extends Container {
+
+	private InductionFurnaceTileEntity tileEntity;
+
+	// how long this furnace will continue to burn for (fuel)
+	public int lastBurnTime;
+
+	// the start time for this fuel
+	public int lastItemBurnTime;
+
+	// how long time left before cooked
+	public int lastCookTime;
+
+	public InductionFurnaceContainerOld1(InventoryPlayer ivPlayer,
+			InductionFurnaceTileEntity tileEntity) {
+
+		// registra o tile entity e cria os slots
+
+		this.tileEntity = tileEntity;
+
+		// cria os slots em relação do numero do slot com a sua posição na gui
+		// 0 - furnace up
+		// 1 - furnace down
+		// 2 - furnace right
+
+		
+		addSlotToContainer(new Slot(tileEntity, 0, 56, 17));
+		addSlotToContainer(new Slot(tileEntity, 1, 56, 53));// {
+		//@Override
+		//	public boolean canTakeStack(EntityPlayer p_82869_1_) {
+		//		return false;
+		//	}
+		//});
+		// addSlotToContainer(new Slot(tileEntity, 2, 116, 35).);
+		addSlotToContainer(new SlotFurnace(ivPlayer.player, tileEntity, 2, 116,
+				35));
+
+		// 3-29 Player inventory back
+		// 30-38 Player inventory hand
+		int i;
+		for (i = 0; i < 3; ++i) {
+			for (int j = 0; j < 9; ++j) {
+				this.addSlotToContainer(new Slot(ivPlayer, j + i * 9 + 9,
+						8 + j * 18, 84 + i * 18));
+			}
+		}
+
+		for (i = 0; i < 9; ++i) {
+			this.addSlotToContainer(new Slot(ivPlayer, i, 8 + i * 18, 142));
+		}
+	}
+
+	// registra valores na tileentity no server para ser enviado para os client
+	// que possui ativado tileentity especificado
+	@Override
+	public void addCraftingToCrafters(ICrafting iCraftting) {
+		super.addCraftingToCrafters(iCraftting);
+		iCraftting.sendProgressBarUpdate(this, 0, tileEntity.cookTime);
+		iCraftting.sendProgressBarUpdate(this, 1, tileEntity.burnTime);
+		iCraftting.sendProgressBarUpdate(this, 2,
+				tileEntity.currentItemBurnTime);
+		// System.out.println("");
+	}
+
+	@Override
+	public void detectAndSendChanges() {
+		// System.out.println("detectAndSendChanges()");
+		super.detectAndSendChanges();
+
+		for (int i = 0; i < crafters.size(); i++) {
+			// System.out.println(i + "," + crafters.size());
+			ICrafting iCraftting = (ICrafting) crafters.get(i);
+
+			if (lastCookTime != tileEntity.cookTime) {
+				iCraftting.sendProgressBarUpdate(this, 0, tileEntity.cookTime);
+			}
+			if (lastBurnTime != tileEntity.burnTime) {
+				iCraftting.sendProgressBarUpdate(this, 1, tileEntity.burnTime);
+			}
+			if (lastItemBurnTime != tileEntity.currentItemBurnTime) {
+				iCraftting.sendProgressBarUpdate(this, 2,
+						tileEntity.currentItemBurnTime);
+			}
+		}
+
+		lastCookTime = tileEntity.cookTime;
+		lastBurnTime = tileEntity.burnTime;
+		lastItemBurnTime = tileEntity.currentItemBurnTime;
+	}
+
+	// no client e recebidos os valores atualizados do tileentity do server
+	@Override
+	public void updateProgressBar(int varId, int newValue) {
+		if (varId == 0)
+			tileEntity.cookTime = newValue;
+		if (varId == 1)
+			tileEntity.burnTime = newValue;
+		if (varId == 2)
+			tileEntity.currentItemBurnTime = newValue;
+		// System.out.println("");
+	}
+
+	@Override
+	public ItemStack transferStackInSlot(EntityPlayer player, int slot) {
+		return null;
+	}
+
+	@Override
+	public boolean canInteractWith(EntityPlayer player) {
+		return tileEntity.isUseableByPlayer(player);
+	}
+
+}
