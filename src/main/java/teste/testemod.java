@@ -12,8 +12,10 @@ import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
+import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.common.registry.LanguageRegistry;
+import cpw.mods.fml.relauncher.Side;
 
 @Mod(modid = testemod.MODID, name = testemod.NAME, version = testemod.VERSION)
 public class testemod {
@@ -27,10 +29,9 @@ public class testemod {
 	@Instance("testemod")
 	public static testemod instance;
 
-	//@SidedProxy(clientSide = "teste.ClientProxy", serverSide = "teste.CommonProxy")
-	//public static CommonProxy proxy;
-
 	public static final int guiIdInductionFurnace = 0;
+
+	public static SimpleNetworkWrapper networkWrapper;
 
 	@EventHandler
 	public void init(FMLInitializationEvent event) {
@@ -54,7 +55,14 @@ public class testemod {
 		NetworkRegistry.INSTANCE.registerGuiHandler(testemod.instance,
 				new InductionFurnaceGuiHandler());
 
-		// Deprecated for removal in 1.8
-		// LanguageRegistry.instance().addStringLocalization("container.inductionFurnace","Induction Furnace");
+		networkWrapper = NetworkRegistry.INSTANCE.newSimpleChannel(MODID);
+		// networkWrapper.registerMessage(
+		// InductionFurnacePowerPacket.Handler.class,
+		// InductionFurnacePowerPacket.class, 0, Side.SERVER);
+		networkWrapper
+				.registerMessage(
+						InductionFurnaceTileEntity.PacketMannager.class,
+						InductionFurnaceTileEntity.PacketMannager.class, 0,
+						Side.SERVER);
 	}
 }

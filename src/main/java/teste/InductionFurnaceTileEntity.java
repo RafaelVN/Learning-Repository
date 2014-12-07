@@ -1,9 +1,16 @@
 package teste;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
+import cpw.mods.fml.common.network.ByteBufUtils;
+import cpw.mods.fml.common.network.simpleimpl.IMessage;
+import cpw.mods.fml.common.network.simpleimpl.IMessageHandler;
+import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockFurnace;
 import net.minecraft.block.material.Material;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -17,32 +24,19 @@ import net.minecraft.item.ItemTool;
 import net.minecraft.item.crafting.FurnaceRecipes;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.World;
+import net.minecraftforge.common.DimensionManager;
 
 public class InductionFurnaceTileEntity extends TileEntity implements
 		ISidedInventory {
 
 	// Slots id
-	// public static final int INGREDIENT_STOCK_1 = 0;
-	// public static final int INGREDIENT_STOCK_2 = 1;
-	// public static final int INGREDIENT_STOCK_3 = 2;
-	// public static final int INGREDIENT_STOCK_4 = 3;
-	// public static final int INGREDIENT_STOCK_5 = 4;
 	public static final int[] INGREDIENT_STOCK = new int[] { 0, 1, 2, 3, 4 };
 
-	// public static final int INGREDIENT_PLACE_1 = 5;
-	// public static final int INGREDIENT_PLACE_2 = 6;
-	// public static final int INGREDIENT_PLACE_3 = 7;
-	// public static final int INGREDIENT_PLACE_4 = 8;
-	// public static final int INGREDIENT_PLACE_5 = 9;
 	public static final int[] INGREDIENT_PLACE = new int[] { 5, 6, 7, 8, 9 };
 
-	// public static final int RESULT_1 = 10;
-	// public static final int RESULT_2 = 11;
-	// public static final int RESULT_3 = 12;
-	// public static final int RESULT_4 = 13;
-	// public static final int RESULT_5 = 14;
 	public static final int[] RESULT = new int[] { 10, 11, 12, 13, 14 };
 
 	// testing
@@ -55,20 +49,6 @@ public class InductionFurnaceTileEntity extends TileEntity implements
 	// private static final int[] slots_sides = new int[] { 1 };
 
 	private ItemStack[] slots = new ItemStack[16];
-
-	// furnace burning speed
-	public int furnaceSpeed = 100;
-
-	// how long this furnace will continue to burn for (fuel)
-	public int burnTime;
-
-	// the start time for this fuel
-	public int currentItemBurnTime;
-
-	// how long time left before cooked
-	// public int cookTime;
-
-	public int[] cookTime = new int[5];
 
 	public int getSizeIventory() {
 		return slots.length;
@@ -107,6 +87,7 @@ public class InductionFurnaceTileEntity extends TileEntity implements
 	// menor)
 	@Override
 	public ItemStack decrStackSize(int slot, int qtd) {
+		// System.out.println("decr inv");
 		if (slots[slot] != null) {
 			ItemStack itemStack;
 
@@ -147,7 +128,6 @@ public class InductionFurnaceTileEntity extends TileEntity implements
 	// Slot para a mesma id
 	@Override
 	public void setInventorySlotContents(int slot, ItemStack itemStack) {
-
 		slots[slot] = itemStack;
 
 		if (itemStack != null && itemStack.stackSize > getInventoryStackLimit()) {
@@ -197,7 +177,7 @@ public class InductionFurnaceTileEntity extends TileEntity implements
 
 	@Override
 	public void writeToNBT(NBTTagCompound nbt) {
-
+		// System.out.println(nbt.toString());
 		// System.out
 		// .println("Write !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 
@@ -215,6 +195,10 @@ public class InductionFurnaceTileEntity extends TileEntity implements
 		 * if (isInvNameLocalized()) { nbt.setString("CustomName",
 		 * localizedName); }
 		 */
+	}
+
+	public void writeOnlyTileToNBT(NBTTagCompound nbt) {
+		super.writeToNBT(nbt);
 	}
 
 	// determina se pode ser usado pelo jogador nas circunstãncias atual
@@ -239,81 +223,10 @@ public class InductionFurnaceTileEntity extends TileEntity implements
 	public void closeInventory() {
 	}
 
-	public boolean isBurning() {
-		return burnTime > 0;
-	}
-
 	@Override
 	public void updateEntity() {
-
-		boolean isTileEntityStateChanged, isSmelting;
-		isTileEntityStateChanged = isSmelting = false;
-		boolean lastState = isBurning();
-
 		if (!worldObj.isRemote) {
-			if (isBurning()) {
-				burnTime--;
-			}
-
-			for (int i = 0; i < 5; i++) {
-				if (!isBurning()) {
-					if (canPlaceStocked(i)
-							&& getItemBurnTime(slots[FUEL_PLACE]) > 0) {
-						placeStocked(i);
-					}
-				} else if (canPlaceStocked(i)) {
-					placeStocked(i);
-				}
-
-				if (canSmelt(i)) {
-					isSmelting = true;
-				}
-
-			}
-			if (!isBurning() && isSmelting) {
-				currentItemBurnTime = burnTime = getItemBurnTime(slots[FUEL_PLACE]);
-
-				if (isBurning()) {
-
-					isTileEntityStateChanged = true;
-
-					if (slots[FUEL_PLACE] != null) {
-						slots[FUEL_PLACE].stackSize--;
-
-						// in case of buckets
-						if (slots[FUEL_PLACE].stackSize == 0) {
-							slots[FUEL_PLACE] = slots[FUEL_PLACE].getItem()
-									.getContainerItem(slots[FUEL_PLACE]);
-						}
-					}
-
-				}
-			}
-			for (int i = 0; i < 5; i++) {
-				if (isBurning()) {
-					if (canSmelt(i)) {
-						cookTime[i]++;
-
-						if (cookTime[i] == furnaceSpeed) {
-							cookTime[i] = 0;
-							smeltItem(i);
-							isTileEntityStateChanged = true;
-						}
-					}
-				} else {
-					cookTime[i] = 0;
-				}
-			}
-		}
-
-		if (lastState != isBurning()) {
-			isTileEntityStateChanged = true;
-			InductionFurnaceBlock.updateFurnaceBlockState(isBurning(),
-					worldObj, xCoord, yCoord, zCoord);
-		}
-
-		if (isTileEntityStateChanged) {
-			markDirty();
+			updateImpl();
 		}
 	}
 
@@ -337,89 +250,8 @@ public class InductionFurnaceTileEntity extends TileEntity implements
 		return false;
 	}
 
-	private void placeStocked(int i) {
-		ItemStack item = slots[INGREDIENT_STOCK[i]].copy();
-		item.stackSize = 1;
-		slots[INGREDIENT_PLACE[i]] = item;
-		slots[INGREDIENT_STOCK[i]].stackSize--;
-		if (slots[INGREDIENT_STOCK[i]].stackSize <= 0) {
-			slots[INGREDIENT_STOCK[i]] = null;
-		}
-	}
-
-	private boolean canSmelt(int i) {
-		// se o slot de ingrediente estiver vazio
-		if (/*
-			 * slots[INGREDIENT_STOCK[i]] == null &&
-			 */slots[INGREDIENT_PLACE[i]] == null) {
-			return false;
-		} else {
-			// obtem o produto do ingrediente no registro de recipes (caso
-			// exista a recipe para o ingrediente)
-			ItemStack itemStack = FurnaceRecipes.smelting().getSmeltingResult(
-					slots[INGREDIENT_PLACE[i]]);
-
-			// caso não tenha encontrado um resultado para o ingrediente
-			if (itemStack == null)
-				return false;
-
-			// do contrário caso há espaço no slot de produto
-			if (slots[RESULT[i]] == null)
-				return true;
-
-			// caso o slot de produto se encontra ocupado
-			// e o tipo de item não se equivale com do ingrediente
-			if (!slots[RESULT[i]].isItemEqual(itemStack))
-				return false;
-
-			// do contrário se analisa a quantidade em itemstack
-			int result = slots[RESULT[i]].stackSize + itemStack.stackSize;
-			return (result <= getInventoryStackLimit() && result <= itemStack
-					.getMaxStackSize());
-		}
-	}
-
-	// efeuta o smelt
-	public void smeltItem(int i) {
-		if (canSmelt(i)) {
-
-			// obtem o resultado para o tipo de ingrediente
-			ItemStack itemStack = FurnaceRecipes.smelting().getSmeltingResult(
-					slots[INGREDIENT_PLACE[i]]);
-
-			// caso o slot de produto se encontre vazio é feito uma cópia do
-			// itemStack resultado
-			if (slots[RESULT[i]] == null) {
-				slots[RESULT[i]] = itemStack.copy();
-
-				// do contrário o itemStack produto é incrementado com o
-				// resultado
-			} else if (slots[RESULT[i]].isItemEqual(itemStack)) {
-				slots[RESULT[i]].stackSize += itemStack.stackSize;
-			}
-
-			// é deduzido uma unidade do ingrediente
-			slots[INGREDIENT_PLACE[i]].stackSize--;
-
-			// caso a diminuição fez com que a quantidada fosse a 0 , remove o
-			// itemStack do slot ingrediente
-			if (slots[INGREDIENT_PLACE[i]].stackSize <= 0) {
-				slots[INGREDIENT_PLACE[i]] = null;
-			}
-
-			if (!(burnTime > 1)) {
-				if (canPlaceStocked(i)
-						&& getItemBurnTime(slots[FUEL_PLACE]) > 0) {
-					placeStocked(i);
-				}
-			} else if (canPlaceStocked(i)) {
-				placeStocked(i);
-			}
-		}
-	}
-
 	// obtem o tempo de combustão do item caso exista
-	public static int getItemBurnTime(ItemStack itemStack) {
+	public static int getItemFuelValue(ItemStack itemStack) {
 		if (itemStack == null) {
 			return 0;
 		} else {
@@ -473,7 +305,7 @@ public class InductionFurnaceTileEntity extends TileEntity implements
 
 	// analisa se um item tem característica de combustão
 	public static boolean isItemFuel(ItemStack itemStack) {
-		return getItemBurnTime(itemStack) > 0;
+		return getItemFuelValue(itemStack) > 0;
 	}
 
 	// testa a validade de um item para determinado slot
@@ -512,15 +344,347 @@ public class InductionFurnaceTileEntity extends TileEntity implements
 		return true;
 	}
 
-	public int getBurnTimeRemainingScaled(int scale) {
-		if (currentItemBurnTime == 0) {
-			currentItemBurnTime = furnaceSpeed;
+	public int getFuelRemainingScaled(int scale) {
+		if (currentItemFuel == 0) {
+			currentItemFuel = furnaceSpeed;
 		}
-		return burnTime * scale / currentItemBurnTime;
+		return fuel * scale / currentItemFuel;
 	}
 
 	public int getCookProgressScaled(int scale, int i) {
 		return cookTime[i] * scale / furnaceSpeed;
 	}
 
+	public void sendPowerSwitchMsg() {
+		if (worldObj.isRemote) {
+			NBTTagCompound nbt = new NBTTagCompound();
+			writeOnlyTileToNBT(nbt);
+			nbt.setInteger("msg", PacketMannager.POWER_SWITCH_MSG);
+
+			int dimensionId = worldObj.provider.dimensionId;
+			nbt.setInteger("dimension", dimensionId);
+
+			testemod.networkWrapper.sendToServer(new PacketMannager(nbt));
+		}
+	}
+
+	public static class PacketMannager implements IMessage,
+
+	IMessageHandler<PacketMannager, IMessage> {
+
+		public static final int POWER_SWITCH_MSG = 0;
+
+		public NBTTagCompound nbt;
+
+		// desired by packet inner system
+		public PacketMannager() {
+		}
+
+		public PacketMannager(NBTTagCompound nbt) {
+			this.nbt = nbt;
+		}
+
+		@Override
+		public void fromBytes(ByteBuf buf) {
+			nbt = ByteBufUtils.readTag(buf);
+		}
+
+		@Override
+		public void toBytes(ByteBuf buf) {
+			ByteBufUtils.writeTag(buf, nbt);
+		}
+
+		@Override
+		public IMessage onMessage(PacketMannager message, MessageContext ctx) {
+			NBTTagCompound nbtMsg = message.nbt;
+			int msg = nbtMsg.getInteger("msg");
+			int x, y, z, dimensionId;
+			TileEntity tileEntity;
+			InductionFurnaceTileEntity castedTileEntity;
+			boolean powerFlag;
+
+			switch (msg) {
+			case POWER_SWITCH_MSG: {
+
+				dimensionId = nbtMsg.getInteger("dimension");
+				x = nbtMsg.getInteger("x");
+				y = nbtMsg.getInteger("y");
+				z = nbtMsg.getInteger("z");
+
+				World world = DimensionManager.getWorld(dimensionId);
+				if (world != null) {
+					System.out.println(world);
+					tileEntity = world.getTileEntity(x, y, z);
+					System.out.println(tileEntity);
+					System.out.println(x + "," + y + "," + z + ","
+							+ dimensionId);
+					if (tileEntity != null) {
+						if (tileEntity instanceof InductionFurnaceTileEntity) {
+							// castedTileEntity = (InductionFurnaceTileEntity)
+							// tileEntity;
+							((InductionFurnaceTileEntity) tileEntity)
+									.switchPower();
+							// powerFlag = castedTileEntity.powerFlag;
+							// castedTileEntity.powerFlag = !powerFlag;
+						}
+					}
+				}
+			}
+			}
+			return null;
+		}
+	}
+
+	// ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	// determine if the furnace is active
+	private boolean isBurning;
+
+	// on/off flag
+	private boolean powerFlag;
+
+	// furnace burning speed
+	// will be change
+	public int furnaceSpeed = 100;
+
+	// how long this furnace will continue to burn for
+	private int fuel;
+
+	// the start time for this fuel
+	private int currentItemFuel;
+
+	// how long time left before cooked
+	private int[] cookTime = new int[5];
+
+	public void setBurning(boolean b) {
+		if (worldObj.isRemote) {
+			isBurning = b;
+		}
+	}
+
+	public boolean isBurning() {
+		return isBurning;
+	}
+
+	void switchPower() {
+		powerFlag = !powerFlag;
+	}
+
+	public void setPower(boolean power) {
+		if (worldObj.isRemote) {
+			powerFlag = power;
+		}
+	}
+
+	public boolean isPowerOn() {
+		return powerFlag;
+	}
+
+	public void setFuelValue(int fuel) {
+		if (worldObj.isRemote) {
+			this.fuel = fuel;
+		}
+	}
+
+	public int getFuelValue() {
+		return fuel;
+	}
+
+	public void setCurrentItemFuel(int currentItemFuel) {
+		if (worldObj.isRemote) {
+			this.currentItemFuel = currentItemFuel;
+		}
+	}
+
+	public int getCurrentItemFuel() {
+		return currentItemFuel;
+	}
+
+	public void setCookTime(int cookTime, int i) {
+		if (worldObj.isRemote) {
+			this.cookTime[i] = cookTime;
+		}
+	}
+
+	public int getCookTime(int i) {
+		return cookTime[i];
+	}
+
+	public int[] getAllCookTimes() {
+		return cookTime.clone();
+	}
+
+	private void updateImpl() {
+		boolean lastState = isBurning;
+		boolean isStateChanged;
+		boolean[] isSmelting = new boolean[5];
+		boolean isSomeSmelting = isStateChanged = false;
+
+		// ////////////////////////////////////////////////////////////////////////
+		if (hasFuel() && powerFlag) { // caso exista combustível carregado
+			for (int i = 0; i < 5; i++) {
+				if (trySmelt(i)) {
+					consumeFuelandCook(i);
+					if (cookTime[i] == furnaceSpeed) {
+						makeSmelt(i);
+					}
+					isSomeSmelting = true;
+				}
+			}
+			isBurning = isSomeSmelting;
+
+			// ////////////////////////////////////////////////////////////////////////
+		} else if (hasReserveFuelStock() && powerFlag) { // do contrário caso
+															// exista
+			// combustível em estoque
+			for (int i = 0; i < 5; i++) {
+				if (trySmelt(i)) {
+					loadFuel();
+					consumeFuelandCook(i);
+					if (cookTime[i] == furnaceSpeed) {
+						makeSmelt(i);
+					}
+					isSomeSmelting = true;
+				}
+			}
+			isBurning = isSomeSmelting;
+
+			// /////////////////////////////////////////////////////////////////////////
+		} else { // do contrário
+			isBurning = false;
+		}
+
+		if (lastState != isBurning) {
+			isStateChanged = true;
+			if (!isBurning) {
+				// se houve uma mudança de estado e esta mudança acarretou em um
+				// desligamento
+				// reseta todas as cookTime
+				for (int i = 0; i < 5; i++) {
+					cookTime[i] = 0;
+				}
+			}
+		}
+		if (isStateChanged) {
+			// isTileEntityStateChanged = true;
+			InductionFurnaceBlock.updateFurnaceBlockState(isBurning, worldObj,
+					xCoord, yCoord, zCoord);
+		}
+	}
+
+	private void loadFuel() {
+		if (fuel <= 0) {
+			currentItemFuel = fuel = getItemFuelValue(slots[FUEL_PLACE]);
+			slots[FUEL_PLACE].stackSize--;
+			if (slots[FUEL_PLACE].stackSize == 0) {
+				// return null to any non container items, return item container
+				// in case of buckets and others
+				slots[FUEL_PLACE] = slots[FUEL_PLACE].getItem()
+						.getContainerItem(slots[FUEL_PLACE]);
+			}
+		}
+	}
+
+	private void consumeFuelandCook(int i) {
+		// will be changed
+		fuel--;
+		cookTime[i]++;
+	}
+
+	private boolean hasReserveFuelStock() {
+		return getItemFuelValue(slots[FUEL_PLACE]) > 0;
+	}
+
+	private boolean canSmelt(ItemStack item, int i) {
+		// se o slot de ingrediente estiver vazio
+		// ItemStack slotTargeted;
+		if (item == null) {
+			return false;
+		} else {
+			// obtem o produto do ingrediente no registro de recipes (caso
+			// exista a recipe para o ingrediente)
+			ItemStack itemStack = FurnaceRecipes.smelting().getSmeltingResult(
+					item);
+
+			// caso não tenha encontrado um resultado para o ingrediente
+			if (itemStack == null)
+				return false;
+
+			// do contrário caso há espaço no slot de produto
+			if (slots[RESULT[i]] == null)
+				return true;
+
+			// caso o slot de produto se encontra ocupado
+			// e o tipo de item não se equivale com do ingrediente
+			if (!slots[RESULT[i]].isItemEqual(itemStack))
+				return false;
+
+			// do contrário se analisa a quantidade em itemstack
+			int result = slots[RESULT[i]].stackSize + itemStack.stackSize;
+			return (result <= getInventoryStackLimit() && result <= itemStack
+					.getMaxStackSize());
+		}
+	}
+
+	private void placeStocked(int i) {
+		ItemStack item = slots[INGREDIENT_STOCK[i]].copy();
+		item.stackSize = 1;
+		slots[INGREDIENT_PLACE[i]] = item;
+		slots[INGREDIENT_STOCK[i]].stackSize--;
+		if (slots[INGREDIENT_STOCK[i]].stackSize <= 0) {
+			slots[INGREDIENT_STOCK[i]] = null;
+		}
+	}
+
+	private boolean trySmelt(int i) {
+		if (canSmelt(slots[INGREDIENT_PLACE[i]], i)) {
+			return true;
+		} else if (canSmelt(slots[INGREDIENT_STOCK[i]], i)) {
+			placeStocked(i);
+			return true;
+		}
+		return false;
+	}
+
+	private void makeSmelt(int i) {
+
+		// obtem o resultado para o tipo de ingrediente
+		ItemStack itemStack = FurnaceRecipes.smelting().getSmeltingResult(
+				slots[INGREDIENT_PLACE[i]]);
+
+		// caso o slot de produto se encontre vazio é feito uma cópia do
+		// itemStack resultado
+		if (slots[RESULT[i]] == null) {
+			slots[RESULT[i]] = itemStack.copy();
+
+			// do contrário o itemStack produto é incrementado com o
+			// resultado
+		} else if (slots[RESULT[i]].isItemEqual(itemStack)) {
+			slots[RESULT[i]].stackSize += itemStack.stackSize;
+		}
+
+		// é deduzido uma unidade do ingrediente
+		slots[INGREDIENT_PLACE[i]].stackSize--;
+
+		// caso a diminuição fez com que a quantidada fosse a 0 , remove o
+		// itemStack do slot ingrediente
+		if (slots[INGREDIENT_PLACE[i]].stackSize <= 0) {
+			slots[INGREDIENT_PLACE[i]] = null;
+		}
+
+		// reseta o tempo de cook do slot i
+		cookTime[i] = 0;
+
+		// if (!(burnTime > 1)) {
+		// if (canPlaceStocked(i) && getItemBurnTime(slots[FUEL_PLACE]) > 0) {
+		// placeStocked(i);
+		// }
+		// } else if (canPlaceStocked(i)) {
+		// placeStocked(i);
+		// }
+	}
+
+	private boolean hasFuel() {
+		return fuel > 0;
+	}
 }

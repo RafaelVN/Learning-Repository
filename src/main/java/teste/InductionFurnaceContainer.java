@@ -21,13 +21,13 @@ public class InductionFurnaceContainer extends Container {
 	// how long time left before cooked
 	public int[] lastCookTime = new int[5];
 
+	public int lastPowerFlag, lastIsBurning;
+
 	public InductionFurnaceContainer(InventoryPlayer ivPlayer,
 			InductionFurnaceTileEntity tileEntity) {
-
 		// registra o tile entity e cria os slots
 
 		this.tileEntity = tileEntity;
-
 		// cria os slots em relação do numero do slot com a sua posição na gui
 
 		// 0-4 - stocks
@@ -63,21 +63,28 @@ public class InductionFurnaceContainer extends Container {
 	}
 
 	// registra valores na tileentity no server para ser enviado para os client
-	// que possui ativado tileentity especificado
+	// chamada quando o bloco ativado pelo client
 
 	// ids :
 	// 0-4 cookTime[]
-	// 5 burnTime;
-	// 6 currentItemBurnTime
+	// 5 fuel;
+	// 6 currentItemfuel
+	// 7 powerFlag
+	// 8 burning state
 	@Override
 	public void addCraftingToCrafters(ICrafting iCraftting) {
 		super.addCraftingToCrafters(iCraftting);
 		for (int i = 0; i < 5; i++) {
-			iCraftting.sendProgressBarUpdate(this, i, tileEntity.cookTime[i]);
+			iCraftting
+					.sendProgressBarUpdate(this, i, tileEntity.getCookTime(i));
 		}
-		iCraftting.sendProgressBarUpdate(this, 5, tileEntity.burnTime);
+		iCraftting.sendProgressBarUpdate(this, 5, tileEntity.getFuelValue());
 		iCraftting.sendProgressBarUpdate(this, 6,
-				tileEntity.currentItemBurnTime);
+				tileEntity.getCurrentItemFuel());
+		iCraftting.sendProgressBarUpdate(this, 7, tileEntity.isPowerOn() ? 1
+				: 0);
+		iCraftting.sendProgressBarUpdate(this, 8, tileEntity.isBurning() ? 1
+				: 0);
 	}
 
 	@Override
@@ -86,41 +93,70 @@ public class InductionFurnaceContainer extends Container {
 	public void detectAndSendChanges() {
 
 		super.detectAndSendChanges();
+		ICrafting iCraftting;
 
 		// eu acho que se refere a cada player que tem ativo o bloco
 		for (int ic = 0; ic < crafters.size(); ic++) {
-			ICrafting iCraftting = (ICrafting) crafters.get(ic);
+			iCraftting = (ICrafting) crafters.get(ic);
 
 			for (int i = 0; i < 5; i++) {
-				if (lastCookTime[i] != tileEntity.cookTime[i]) {
+				if (lastCookTime[i] != tileEntity.getCookTime(i)) {
 					iCraftting.sendProgressBarUpdate(this, i,
-							tileEntity.cookTime[i]);
+							tileEntity.getCookTime(i));
 				}
 			}
-			if (lastBurnTime != tileEntity.burnTime) {
-				iCraftting.sendProgressBarUpdate(this, 5, tileEntity.burnTime);
-			}
-			if (lastItemBurnTime != tileEntity.currentItemBurnTime) {
+			if (lastBurnTime != tileEntity.getFuelValue())
+				iCraftting.sendProgressBarUpdate(this, 5,
+						tileEntity.getFuelValue());
+
+			if (lastItemBurnTime != tileEntity.getCurrentItemFuel())
 				iCraftting.sendProgressBarUpdate(this, 6,
-						tileEntity.currentItemBurnTime);
-			}
+						tileEntity.getCurrentItemFuel());
+
+			boolean b = lastPowerFlag == 1 ? true : false;
+			if (b != tileEntity.isPowerOn())
+				iCraftting.sendProgressBarUpdate(this, 7,
+						tileEntity.isPowerOn() ? 1 : 0);
+
+			b = lastIsBurning == 1 ? true : false;
+			if (b != tileEntity.isBurning())
+				iCraftting.sendProgressBarUpdate(this, 8,
+						tileEntity.isBurning() ? 1 : 0);
 		}
 
-		lastCookTime = tileEntity.cookTime.clone();
-		lastBurnTime = tileEntity.burnTime;
-		lastItemBurnTime = tileEntity.currentItemBurnTime;
+		lastCookTime = tileEntity.getAllCookTimes();
+		lastBurnTime = tileEntity.getFuelValue();
+		lastItemBurnTime = tileEntity.getCurrentItemFuel();
+		lastPowerFlag = tileEntity.isPowerOn() ? 1 : 0;
+		lastIsBurning = tileEntity.isBurning() ? 1 : 0;
+
 	}
 
 	// no client e recebidos os valores atualizados do tileentity do server
 	@Override
 	public void updateProgressBar(int varId, int newValue) {
 		if (varId >= 0 && varId <= 4) {
-			tileEntity.cookTime[varId] = newValue;
+			tileEntity.setCookTime(newValue, varId);
+			System.out.println("cooktime change");
 		}
-		if (varId == 5)
-			tileEntity.burnTime = newValue;
-		if (varId == 6)
-			tileEntity.currentItemBurnTime = newValue;
+		if (varId == 5) {
+			tileEntity.setFuelValue(newValue);
+			System.out.println("fuel change");
+		}
+		if (varId == 6) {
+			tileEntity.setCurrentItemFuel(newValue);
+			System.out.println("currentItemFuel change");
+		}
+		if (varId == 7) {
+			tileEntity.setPower(newValue == 1 ? true : false);
+			System.out.println("powerFlag change :" + tileEntity.isPowerOn());
+		}
+		if (varId == 8) {
+			tileEntity.setBurning(newValue == 1 ? true : false);
+			System.out.println("burning state change");
+		}
+
+		// System.out.println(tileEntity.powerFlag);
 	}
 
 	@Override

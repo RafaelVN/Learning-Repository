@@ -60,10 +60,8 @@ public class InductionFurnaceBlock extends BlockContainer /*
 
 	@Override
 	public TileEntity createNewTileEntity(World world, int meta) {
-		// System.out.println(meta);
-		// System.out.println("Tile Entity criado :" + toString());
-		// Item.getItemFromBlock(this);
-		return new InductionFurnaceTileEntity();
+		InductionFurnaceTileEntity tile = new InductionFurnaceTileEntity();
+		return tile;
 	}
 
 	@SideOnly(Side.CLIENT)
@@ -227,6 +225,7 @@ public class InductionFurnaceBlock extends BlockContainer /*
 	}
 
 	// chamado par atualizar o bloco em uma derterminada coordenada
+	// !!Somente no Sever!!
 	public static void updateFurnaceBlockState(boolean isBurning, World world,
 			int x, int y, int z) {
 
@@ -240,10 +239,10 @@ public class InductionFurnaceBlock extends BlockContainer /*
 
 		// se ativo
 		if (isBurning) {
-			//System.out.println(isBurning);
+
 			world.setBlock(x, y, z, testemod.inductionFurnaceAtive);
 		} else {
-			//System.out.println(isBurning);
+
 			world.setBlock(x, y, z, testemod.inductionFurnace);
 		}
 

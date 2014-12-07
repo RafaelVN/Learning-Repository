@@ -1,13 +1,13 @@
 package teste;
 
-import org.lwjgl.opengl.GL11;
-
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.InventoryPlayer;
-//import net.minecraft.client.gui.g;
 import net.minecraft.util.ResourceLocation;
+
+import org.lwjgl.opengl.GL11;
 
 public class InductionFurnaceGui extends GuiContainer {
 
@@ -54,21 +54,36 @@ public class InductionFurnaceGui extends GuiContainer {
 		Minecraft.getMinecraft().getTextureManager().bindTexture(texture);
 		drawTexturedModalRect(guiLeft, guiTop, 0, 0, xSize, ySize);
 
-		// Minecraft.getMinecraft().getTextureManager().deleteTexture(texture);
 		Minecraft.getMinecraft().getTextureManager().bindTexture(addons);
 		if (tileEntity.isBurning()) {
-			// System.out.println("BURNING!!!");
-			// System.out.println(tileEntity.burnTime);
+			// if (tileEntity.isSmelting)
 			drawTexturedModalRect(guiLeft + 120, guiTop + 25, 0, 0, 16, 88);
-			int k = this.tileEntity.getBurnTimeRemainingScaled(29);
-			drawTexturedModalRect(guiLeft + 114, guiTop + 119, 16, 0, k + 1, 10);
 		}
+		int fuelScale = tileEntity.getFuelRemainingScaled(29);
+		drawTexturedModalRect(guiLeft + 114, guiTop + 119, 16, 0, fuelScale + 1, 10);
+		System.out.println(tileEntity.getFuelRemainingScaled(29));
+		
 		for (int i = 0; i < 5; i++) {
-			int k = tileEntity.getCookProgressScaled(10, i);
+			int cookTimeScaled = tileEntity.getCookProgressScaled(10, i);
 			drawTexturedModalRect(guiLeft + 137, guiTop + 38 + (18 * i)
-					- (k + 1), 16, 20 - (k + 1), 1, k + 1);
+					- (cookTimeScaled + 1), 16, 20 - (cookTimeScaled + 1), 1, cookTimeScaled + 1);
+			// System.out.println(tileEntity.getCookProgressScaled(10, i));
 		}
-		// Minecraft.getMinecraft().getTextureManager().bindTexture(texture);
-		// drawTexturedModalRect(guiLeft, guiTop, 0, 0, xSize, ySize);
 	}
+
+	public void initGui() {
+		super.initGui();
+		this.buttonList.add(new customButton(0, guiLeft + 15, guiTop + 15, 16,
+				16, "no use"));
+	}
+
+	@Override
+	protected void actionPerformed(GuiButton button) {
+		switch (button.id) {
+		case 0:
+			System.out.println("clique detect");
+			tileEntity.sendPowerSwitchMsg();
+		}
+	}
+
 }
